@@ -7,14 +7,102 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <!-- Visualization & Content Choices:
-        - Hero/Summary: HTML/CSS with Tailwind, incorporating a subtle gradient background for a classy finance theme. Goal: Inform. Justification: Clear, professional initial presentation of identity and core value.
-        - Career Timeline (Experience & Studies): Custom HTML/CSS vertical timeline using Tailwind. Goal: Change/Organize. Justification: Unified, left-aligned chronological display of career progression and education on the "same level". Experience items are detailed, while Study items are concise with key courses listed, making them visually "smaller" while still providing information.
-        - IT Skills: Grouped HTML lists with subheadings, enhanced with finance-relevant Unicode icons (dashboard, spreadsheet). Goal: Organize/Inform. Justification: Clear categorization for readability and quick assessment of technical breadth, with visual cues.
-        - Languages: Chart.js Horizontal Bar Chart (Canvas). Goal: Compare. Justification: Effective visual representation of language proficiency levels. (NO SVG)
-        - Soft Skills: HTML styled list/tags using Tailwind. Goal: Inform. Justification: Concise and visually appealing display of key personal attributes.
-        - Hobbies: HTML list with Unicode icons. Goal: Inform. Justification: Adds a personal dimension concisely.
-        CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global Firebase variables
+        window.firebaseApp = null;
+        window.db = null;
+        window.auth = null;
+        window.userId = null;
+        window.appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'; // Use __app_id or a default
+
+        // Initialize Firebase and authenticate
+        async function initializeFirebase() {
+            try {
+                const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+                if (Object.keys(firebaseConfig).length === 0) {
+                    console.error("Firebase config is missing. Cannot initialize Firebase.");
+                    return;
+                }
+
+                window.firebaseApp = initializeApp(firebaseConfig);
+                window.db = getFirestore(window.firebaseApp);
+                window.auth = getAuth(window.firebaseApp);
+
+                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : '';
+                if (initialAuthToken) {
+                    await signInWithCustomToken(window.auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(window.auth);
+                }
+                window.userId = window.auth.currentUser?.uid || crypto.randomUUID();
+                console.log("Firebase initialized and authenticated. User ID:", window.userId);
+
+                // Load profile picture after Firebase is ready
+                loadProfilePicture();
+
+            } catch (error) {
+                console.error("Error initializing Firebase or authenticating:", error);
+                document.getElementById('statusMessage').textContent = "Error loading CV. Please try again later.";
+                document.getElementById('statusMessage').classList.remove('hidden');
+            }
+        }
+
+        // Function to load profile picture from Firestore
+        async function loadProfilePicture() {
+            if (!window.db || !window.appId) {
+                console.error("Firestore or App ID not initialized.");
+                return;
+            }
+
+            const profilePictureRef = doc(window.db, `artifacts/${window.appId}/public/data/cv_data/profilePicture`);
+            try {
+                const docSnap = await getDoc(profilePictureRef);
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if (data.imageData) {
+                        document.getElementById('profilePicturePreview').src = data.imageData;
+                    }
+                }
+            } catch (e) {
+                console.error("Error loading profile picture:", e);
+                document.getElementById('statusMessage').textContent = "Error loading profile picture.";
+                document.getElementById('statusMessage').classList.remove('hidden');
+            }
+        }
+
+        // Function to save profile picture to Firestore
+        window.saveProfilePicture = async function(imageData) {
+            if (!window.db || !window.appId) {
+                console.error("Firestore or App ID not initialized. Cannot save picture.");
+                document.getElementById('statusMessage').textContent = "Error: Database not ready.";
+                document.getElementById('statusMessage').classList.remove('hidden');
+                return;
+            }
+
+            const profilePictureRef = doc(window.db, `artifacts/${window.appId}/public/data/cv_data/profilePicture`);
+            document.getElementById('statusMessage').textContent = "Uploading...";
+            document.getElementById('statusMessage').classList.remove('hidden');
+
+            try {
+                await setDoc(profilePictureRef, { imageData: imageData });
+                document.getElementById('statusMessage').textContent = "Upload successful!";
+                setTimeout(() => {
+                    document.getElementById('statusMessage').classList.add('hidden');
+                }, 3000); // Hide message after 3 seconds
+            } catch (e) {
+                console.error("Error saving profile picture:", e);
+                document.getElementById('statusMessage').textContent = "Upload failed!";
+                document.getElementById('statusMessage').classList.remove('hidden');
+            }
+        };
+
+        // Initialize Firebase when the window loads
+        window.addEventListener('load', initializeFirebase);
+    </script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -22,6 +110,7 @@
             color: #F0F0F0; /* Default light text for primary body content */
             position: relative; /* For pseudo-element overlay */
             overflow-x: hidden; /* Prevent horizontal scroll from any background effects */
+            font-size: 1.125rem; /* Base font size increased (was 1rem) */
         }
         body::before {
             content: '';
@@ -34,6 +123,11 @@
             background-size: 20px 20px;
             z-index: -1; /* Place behind content */
         }
+        .container {
+            max-width: 960px; /* Increased max-width for larger content area */
+            margin-left: auto;
+            margin-right: auto;
+        }
         .sticky-nav {
             position: sticky;
             top: 0;
@@ -45,28 +139,32 @@
         .nav-link {
             color: #36454F; /* Charcoal Gray for nav links on white background */
             transition: color 0.3s ease;
+            font-size: 1.1rem; /* Slightly larger nav links */
         }
         .nav-link:hover, .nav-link.active {
             color: #003366; /* Navy Blue for hover/active */
         }
         .section-title {
             color: #99CCFF; /* Accent Blue */
+            font-size: 2.5rem; /* Increased section title size (was 3xl/2.25rem) */
+            margin-bottom: 2rem; /* More space below title */
         }
         .card {
             background-color: #FFFFFF; /* Card Background */
             color: #36454F; /* Charcoal Gray for card text */
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-radius: 12px; /* Slightly more rounded corners */
+            box-shadow: 0 6px 16px rgba(0,0,0,0.1); /* Slightly more prominent shadow */
             transition: transform 0.3s ease, box-shadow 0.3s ease;
+            padding: 2rem; /* Increased card padding (was p-6/1.5rem) */
         }
         .card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+            transform: translateY(-6px); /* More pronounced lift on hover */
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15); /* More prominent shadow on hover */
         }
         .timeline-item-wrapper {
             position: relative;
-            padding-left: 30px; /* Space for the line and dot */
-            margin-bottom: 2.5rem; /* Space between items */
+            padding-left: 40px; /* Increased space for the line and dot */
+            margin-bottom: 3.5rem; /* More space between items */
         }
         .timeline-item-wrapper::before {
             content: '';
@@ -74,49 +172,49 @@
             left: 0;
             top: 0;
             bottom: 0;
-            width: 2px;
+            width: 3px; /* Thicker line */
             background-color: #A0C4E2; /* Softer Blue for the line */
         }
         .timeline-item-wrapper::after {
             content: '';
             position: absolute;
-            left: -8px; /* Position the dot over the line */
-            top: 12px; /* Vertical position of the dot */
-            width: 16px;
-            height: 16px;
+            left: -10px; /* Position the dot over the line */
+            top: 16px; /* Vertical position of the dot */
+            width: 20px; /* Larger dot */
+            height: 20px; /* Larger dot */
             border-radius: 50%;
             background-color: #99CCFF; /* Accent Blue for experience dot */
-            border: 3px solid #003366; /* Border to match body background start color */
+            border: 4px solid #003366; /* Thicker border to match body background start color */
             z-index: 1;
         }
         .type-education .timeline-item-wrapper::after {
             background-color: #A0C4E2; /* Softer blue for education timeline dot */
-            border: 3px solid #003366; /* Border to match body background start color */
+            border: 4px solid #003366; /* Thicker border to match body background start color */
         }
         .chart-container {
             position: relative;
             width: 100%;
-            max-width: 500px; /* Max width for readability */
+            max-width: 600px; /* Increased max width for chart */
             margin-left: auto;
             margin-right: auto;
-            height: 250px; /* Base height */
-            max-height: 300px; /* Max height */
+            height: 300px; /* Increased base height */
+            max-height: 400px; /* Increased max height */
         }
         @media (min-width: 768px) {
             .chart-container {
-                height: 300px; /* Taller on larger screens */
+                height: 350px; /* Taller on larger screens */
             }
         }
         .tag {
             background-color: #A0C4E2; /* Softer Blue Accent */
             color: #FFFFFF;
-            padding: 0.25rem 0.75rem;
+            padding: 0.4rem 1rem; /* Increased tag padding */
             border-radius: 9999px; /* pill shape */
-            font-size: 0.875rem;
+            font-size: 0.95rem; /* Slightly larger tag font */
         }
         .type-education .card {
             background-color: #F0F0F0; /* Lighter background for education */
-            border-left: 4px solid #A0C4E2; /* Softer Blue border */
+            border-left: 6px solid #A0C4E2; /* Thicker Softer Blue border */
         }
         /* Gradient for Header */
         .header-gradient {
@@ -125,9 +223,9 @@
         /* Icon styling for consistency */
         .skill-icon {
             display: inline-block;
-            width: 1.2em;
+            width: 1.4em; /* Larger skill icons */
             text-align: center;
-            margin-right: 0.25em;
+            margin-right: 0.35em; /* More space */
             color: #99CCFF; /* Accent color for icons */
         }
         /* Adjusted text colors for elements directly on the dark body background */
@@ -154,33 +252,90 @@
             color: #99CCFF; /* Accent blue for footer links */
         }
         .company-description {
-            font-size: 0.875rem; /* text-sm */
+            font-size: 0.95rem; /* Increased company description font size */
             color: #555555; /* A slightly darker gray for company descriptions within cards */
-            margin-top: 0.5rem;
-            margin-bottom: 0.75rem;
-            border-left: 2px solid #A0C4E2; /* Subtle border for distinction */
-            padding-left: 0.5rem;
+            margin-top: 0.75rem; /* More space */
+            margin-bottom: 1rem; /* More space */
+            border-left: 3px solid #A0C4E2; /* Thicker subtle border for distinction */
+            padding-left: 0.75rem; /* More padding */
         }
         .company-icon {
             display: inline-block;
-            margin-right: 0.5rem;
-            font-size: 1.1em;
+            margin-right: 0.6rem; /* More space */
+            font-size: 1.3em; /* Larger company icons */
             color: #003366; /* Navy blue for company icons, matching the header gradient start */
         }
         .location-flag {
             display: inline-block;
-            margin-left: 0.25rem; /* Small space between location text and flag */
-            font-size: 1.1em; /* Adjust size as needed */
+            margin-left: 0.35rem; /* More space between location text and flag */
+            font-size: 1.3em; /* Larger flag icons */
             vertical-align: middle; /* Align with text */
+        }
+
+        /* Profile picture and upload styling */
+        .profile-picture-container {
+            position: relative;
+            width: 160px; /* Increased size (was 128px) */
+            height: 160px; /* Increased size (was 128px) */
+            margin: 0 auto 2rem auto; /* More margin below */
+            border-radius: 9999px; /* rounded-full */
+            border: 5px solid #99CCFF; /* Thicker border */
+            box-shadow: 0 6px 16px rgba(0,0,0,0.25); /* More prominent shadow */
+            overflow: hidden;
+            background-color: #FFFFFF; /* Fallback background */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .profile-picture-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .profile-picture-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6); /* Slightly darker overlay */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            color: white;
+            font-size: 1rem; /* Larger overlay text */
+            text-align: center;
+            padding: 0.75rem; /* More padding */
+        }
+        .profile-picture-container:hover .profile-picture-overlay {
+            opacity: 1;
+        }
+        .profile-picture-input {
+            display: none; /* Hide the default file input */
+        }
+        #statusMessage {
+            margin-top: 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #99CCFF;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+        .hidden {
+            display: none;
         }
     </style>
 </head>
 <body class="antialiased">
 
     <nav id="main-nav" class="sticky-nav">
-        <div class="container mx-auto px-6 py-3 flex justify-between items-center">
-            <a href="#" class="text-xl font-bold text-gray-800">Jonathan Randrianandrasana</a>
-            <div class="space-x-4">
+        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <a href="#" class="text-2xl font-bold text-gray-800">Jonathan Randrianandrasana</a>
+            <div class="space-x-6">
                 <a href="#summary" class="nav-link">Summary</a>
                 <a href="#experience" class="nav-link">Experience</a>
                 <a href="#skills" class="nav-link">Skills</a>
@@ -189,11 +344,20 @@
         </div>
     </nav>
 
-    <header id="hero" class="py-16 md:py-24 text-white header-gradient">
+    <header id="hero" class="py-20 md:py-32 text-white header-gradient">
         <div class="container mx-auto px-6 text-center">
-            <h1 class="text-3xl md:text-4xl font-bold">Jonathan Randrianandrasana</h1>
-            <p class="mt-4 text-lg md:text-xl text-gray-200">Corporate Management Controller</p>
-            <p class="mt-6 text-gray-300 max-w-2xl mx-auto">
+            <label for="profilePictureUpload" class="profile-picture-container">
+                <img id="profilePicturePreview" src="https://placehold.co/160x160/003366/FFFFFF?text=JR" alt="Profile Picture Placeholder">
+                <div class="profile-picture-overlay">
+                    Click to Upload Photo
+                </div>
+                <input type="file" id="profilePictureUpload" accept="image/*" class="profile-picture-input">
+            </label>
+            <div id="statusMessage" class="hidden"></div>
+            
+            <h1 class="text-4xl md:text-5xl font-bold">Jonathan Randrianandrasana</h1>
+            <p class="mt-5 text-xl md:text-2xl text-gray-200">Corporate Management Controller</p>
+            <p class="mt-8 text-gray-300 max-w-3xl mx-auto text-lg">
                 Connect with me:
                 <a href="mailto:rasrasjona@gmail.com" class="text-white hover:underline">rasrasjona@gmail.com</a> |
                 <a href="tel:0695268750" class="text-white hover:underline">06 95 26 87 50</a> |
@@ -202,37 +366,37 @@
         </div>
     </header>
 
-    <section id="summary" class="py-12 md:py-20">
+    <section id="summary" class="py-16 md:py-24">
         <div class="container mx-auto px-6">
-            <h2 class="text-3xl font-bold text-center mb-4 section-title">Professional Summary</h2>
-            <p class="text-center text-lg text-on-dark-secondary mb-10 max-w-3xl mx-auto">
+            <h2 class="text-center mb-6 section-title">Professional Summary</h2>
+            <p class="text-center text-xl text-on-dark-secondary mb-12 max-w-4xl mx-auto">
                 This section provides a concise overview of my professional background, highlighting key expertise and career focus. My experience lies in assisting and advising managers and operational staff in their decision-making and activity steering through relevant analyses and syntheses.
             </p>
-            <div class="card p-6 md:p-8 max-w-3xl mx-auto">
-                <p class="text-lg text-gray-700 leading-relaxed">
+            <div class="card p-8 md:p-10 max-w-4xl mx-auto">
+                <p class="text-xl text-gray-700 leading-relaxed">
                     Experienced in management control, I assist and advise managers and operational staff in their decision-making and activity steering through relevant analyses and syntheses. My background includes robust experience in financial reporting, budget management, IFRS standards, and process improvement, utilizing tools like SAP, Power BI, and advanced Excel.
                 </p>
             </div>
         </div>
     </section>
 
-    <section id="experience" class="py-12 md:py-20">
+    <section id="experience" class="py-16 md:py-24">
         <div class="container mx-auto px-6">
-            <h2 class="text-3xl font-bold text-center mb-4 section-title">Career Timeline</h2>
-            <p class="text-center text-lg text-on-dark-secondary mb-12 max-w-3xl mx-auto">
+            <h2 class="text-center mb-6 section-title">Career Timeline</h2>
+            <p class="text-center text-xl text-on-dark-secondary mb-16 max-w-4xl mx-auto">
                 Explore my professional journey and educational background. This timeline showcases key roles, responsibilities, and academic achievements that have shaped my expertise in finance and management control.
             </p>
-            <div class="relative max-w-3xl mx-auto">
+            <div class="relative max-w-4xl mx-auto">
                 
                 <div class="timeline-item-wrapper type-experience">
-                    <div class="card p-6">
-                        <p class="font-semibold text-lg text-[#99CCFF]">Nov 2023 - Present <span class="text-sm text-gray-500">| Montauban <span class="location-flag">🇫🇷</span></span></p>
-                        <h3 class="text-xl font-semibold text-gray-800">Corporate Management Controller</h3>
-                        <p class="text-md font-medium text-gray-600 mb-2"><span class="company-icon">🛒</span>Proàpro METRO AG</p>
+                    <div class="card p-8">
+                        <p class="font-semibold text-xl text-[#99CCFF]">Nov 2023 - Present <span class="text-base text-gray-500">| Montauban <span class="location-flag">🇫🇷</span></span></p>
+                        <h3 class="text-2xl font-semibold text-gray-800">Corporate Management Controller</h3>
+                        <p class="text-lg font-medium text-gray-600 mb-3"><span class="company-icon">🛒</span>Proàpro METRO AG</p>
                         <p class="company-description">
                             Proàpro is part of METRO AG, a leading international wholesaler operating in 24 countries. They focus on providing food and non-food products to hotels, restaurants, caterers (HoReCa), and independent traders. Proàpro's sales are around €1.3 billion annually.
                         </p>
-                        <ul class="list-disc list-inside text-gray-700 text-sm space-y-1">
+                        <ul class="list-disc list-inside text-gray-700 text-base space-y-2">
                             <li>Preparation, production, verification, and analysis of consolidated accounts (7 companies) under IFRS standards (IFRS16, IFRS9).</li>
                             <li>Management of reporting packages for monthly performance reviews with METRO group.</li>
                             <li>Overseeing accounting, back-office, and TAGETIK consolidation tool.</li>
@@ -245,14 +409,14 @@
                 </div>
 
                 <div class="timeline-item-wrapper type-education">
-                    <div class="card p-6">
-                        <p class="font-semibold text-lg text-[#99CCFF]">2022 - 2023 <span class="text-sm text-gray-500">| Toulouse <span class="location-flag">🇫🇷</span></span></p>
-                        <h3 class="text-xl font-semibold text-gray-800">
+                    <div class="card p-8">
+                        <p class="font-semibold text-xl text-[#99CCFF]">2022 - 2023 <span class="text-base text-gray-500">| Toulouse <span class="location-flag">🇫🇷</span></span></p>
+                        <h3 class="text-2xl font-semibold text-gray-800">
                             <span class="company-icon">🎓</span>Specialized Master's Degree® Expert in Internal Audit and Management Control
                         </h3>
-                        <p class="text-md font-medium text-gray-600 mb-2">TOULOUSE BUSINESS SCHOOL</p>
-                        <p class="text-sm font-medium text-gray-700 mt-2">Key Courses:</p>
-                        <ul class="list-disc list-inside text-gray-700 text-xs ml-4">
+                        <p class="text-lg font-medium text-gray-600 mb-3">TOULOUSE BUSINESS SCHOOL</p>
+                        <p class="text-base font-medium text-gray-700 mt-3">Key Courses:</p>
+                        <ul class="list-disc list-inside text-gray-700 text-sm ml-6 space-y-1">
                             <li>Internal Audit Standards & Methods</li>
                             <li>Risk Management & Control</li>
                             <li>Consolidated Accounts & IFRS</li>
@@ -263,14 +427,14 @@
                 </div>
                 
                 <div class="timeline-item-wrapper type-experience">
-                    <div class="card p-6">
-                        <p class="font-semibold text-lg text-[#99CCFF]">Sep 2022 - Sep 2023 <span class="text-sm text-gray-500">| Toulouse <span class="location-flag">🇫🇷</span></span></p>
-                        <h3 class="text-xl font-semibold text-gray-800">Management Controller (Apprenticeship)</h3>
-                        <p class="text-md font-medium text-gray-600 mb-2"><span class="company-icon">💻</span>CAPGEMINI</p>
+                    <div class="card p-8">
+                        <p class="font-semibold text-xl text-[#99CCFF]">Sep 2022 - Sep 2023 <span class="text-base text-gray-500">| Toulouse <span class="location-flag">🇫🇷</span></span></p>
+                        <h3 class="text-2xl font-semibold text-gray-800">Management Controller (Apprenticeship)</h3>
+                        <p class="text-lg font-medium text-gray-600 mb-3"><span class="company-icon">💻</span>CAPGEMINI</p>
                         <p class="company-description">
                             Capgemini is a global leader in consulting, technology services, and digital transformation. They help clients accelerate their dual transition to a digital and sustainable world. In 2024, Capgemini reported global revenues of €22.1 billion.
                         </p>
-                        <ul class="list-disc list-inside text-gray-700 text-sm space-y-1">
+                        <ul class="list-disc list-inside text-gray-700 text-base space-y-2">
                             <li>Produced periodic reports (analytical allocations, indirect costs, O2C, project margin).</li>
                             <li>Prepared presentations for BU reviews.</li>
                             <li>Conducted ad-hoc analyses for operational managers.</li>
@@ -282,14 +446,14 @@
                 </div>
                 
                 <div class="timeline-item-wrapper type-education">
-                    <div class="card p-6">
-                         <p class="font-semibold text-lg text-[#99CCFF]">2021 - 2022 <span class="text-sm text-gray-500">| Toulouse <span class="location-flag">🇫🇷</span></span></p>
-                        <h3 class="text-xl font-semibold text-gray-800">
+                    <div class="card p-8">
+                         <p class="font-semibold text-lg text-[#99CCFF]">2021 - 2022 <span class="text-base text-gray-500">| Toulouse <span class="location-flag">🇫🇷</span></span></p>
+                        <h3 class="text-2xl font-semibold text-gray-800">
                             <span class="company-icon">🎓</span>Master's Degree in Audit and Management Control
                         </h3>
-                        <p class="text-md font-medium text-gray-600 mb-2">ESG TOULOUSE</p>
-                        <p class="text-sm font-medium text-gray-700 mt-2">Key Courses:</p>
-                        <ul class="list-disc list-inside text-gray-700 text-xs ml-4">
+                        <p class="text-lg font-medium text-gray-600 mb-3">ESG TOULOUSE</p>
+                        <p class="text-base font-medium text-gray-700 mt-3">Key Courses:</p>
+                        <ul class="list-disc list-inside text-gray-700 text-sm ml-6 space-y-1">
                             <li>Management Control System Design & Piloting</li>
                             <li>Financial & Organizational Audit</li>
                             <li>Corporate & Group Taxation</li>
@@ -300,14 +464,14 @@
                 </div>
 
                 <div class="timeline-item-wrapper type-experience">
-                    <div class="card p-6">
-                        <p class="font-semibold text-lg text-[#99CCFF]">Feb 2021 - Oct 2021 <span class="text-sm text-gray-500">| Madagascar <span class="location-flag">🇲🇬</span></span></p>
-                        <h3 class="text-xl font-semibold text-gray-800">Financial Manager</h3>
-                        <p class="text-md font-medium text-gray-600 mb-2"><span class="company-icon">❤️‍🩹</span>Action Contre la Faim</p>
+                    <div class="card p-8">
+                        <p class="font-semibold text-xl text-[#99CCFF]">Feb 2021 - Oct 2021 <span class="text-base text-gray-500">| Madagascar <span class="location-flag">🇲🇬</span></span></p>
+                        <h3 class="text-2xl font-semibold text-gray-800">Financial Manager</h3>
+                        <p class="text-lg font-medium text-gray-600 mb-3"><span class="company-icon">❤️‍🩹</span>Action Contre la Faim</p>
                         <p class="company-description">
                             Action Contre la Faim (Action Against Hunger) is a leading humanitarian organization committed to ending hunger worldwide. They provide life-saving programs in nutrition, food security, water, sanitation, and hygiene. In 2023, their financial report showed significant resources allocated to programs (88.4%).
                         </p>
-                         <ul class="list-disc list-inside text-gray-700 text-sm space-y-1">
+                         <ul class="list-disc list-inside text-gray-700 text-base space-y-2">
                             <li>Managed financing contracts with sub-recipients.</li>
                             <li>Supervised mission treasury and institutional donor funding.</li>
                             <li>Led accounting and treasury team.</li>
@@ -316,14 +480,14 @@
                 </div>
 
                 <div class="timeline-item-wrapper type-experience">
-                    <div class="card p-6">
-                        <p class="font-semibold text-lg text-[#99CCFF]">Jul 2017 - Jan 2021 <span class="text-sm text-gray-500">| Madagascar <span class="location-flag">🇲🇬</span></span></p>
-                        <h3 class="text-xl font-semibold text-gray-800">Management Controller</h3>
-                        <p class="text-md font-medium text-gray-600 mb-2"><span class="company-icon">🚬</span>Imperial Tobacco</p>
+                    <div class="card p-8">
+                        <p class="font-semibold text-xl text-[#99CCFF]">Jul 2017 - Jan 2021 <span class="text-base text-gray-500">| Madagascar <span class="location-flag">🇲🇬</span></span></p>
+                        <h3 class="text-2xl font-semibold text-gray-800">Management Controller</h3>
+                        <p class="text-lg font-medium text-gray-600 mb-3"><span class="company-icon">🚬</span>Imperial Tobacco</p>
                         <p class="company-description">
                             Imperial Tobacco is a subsidiary of Imperial Brands PLC, a multinational tobacco company. Imperial Brands operates globally, focusing on tobacco and next-generation products (NGP). For FY2024, Imperial Brands reported £8.2 billion in Tobacco & NGP net revenue.
                         </p>
-                        <ul class="list-disc list-inside text-gray-700 text-sm space-y-1">
+                        <ul class="list-disc list-inside text-gray-700 text-base space-y-2">
                             <li>Conducted scenario analysis for strategic decisions.</li>
                             <li>Managed budget preparation, control, and standard cost calculation.</li>
                             <li>Performed monthly reporting and Rolling forecast (P&L, BS, CF, WCR, CAPEX).</li>
@@ -333,14 +497,14 @@
                 </div>
                 
                 <div class="timeline-item-wrapper type-education">
-                    <div class="card p-6">
-                        <p class="font-semibold text-lg text-[#99CCFF]">2014 - 2016 <span class="text-sm text-gray-500">| Madagascar <span class="location-flag">🇲🇬</span></span></p>
-                        <h3 class="text-xl font-semibold text-gray-800">
+                    <div class="card p-8">
+                        <p class="font-semibold text-xl text-[#99CCFF]">2014 - 2016 <span class="text-base text-gray-500">| Madagascar <span class="location-flag">🇲🇬</span></span></p>
+                        <h3 class="text-2xl font-semibold text-gray-800">
                             <span class="company-icon">🎓</span>Master's Degree in Finance and Accounting
                         </h3>
-                        <p class="text-md font-medium text-gray-600 mb-2">CNTEMAD - Madagascar</p>
-                        <p class="text-sm font-medium text-gray-700 mt-2">Key Courses:</p>
-                        <ul class="list-disc list-inside text-gray-700 text-xs ml-4">
+                        <p class="text-lg font-medium text-gray-600 mb-3">CNTEMAD - Madagascar</p>
+                        <p class="text-base font-medium text-gray-700 mt-3">Key Courses:</p>
+                        <ul class="list-disc list-inside text-gray-700 text-sm ml-6 space-y-1">
                             <li>Financial Accounting & Reporting</li>
                             <li>Management Accounting & Control</li>
                             <li>Corporate Finance & Valuation</li>
@@ -351,14 +515,14 @@
                 </div>
 
                 <div class="timeline-item-wrapper type-education">
-                    <div class="card p-6">
-                        <p class="font-semibold text-lg text-[#99CCFF]">2010 - 2013 <span class="text-sm text-gray-500">| Madagascar <span class="location-flag">🇲🇬</span></span></p>
-                        <h3 class="text-xl font-semibold text-gray-800">
+                    <div class="card p-8">
+                        <p class="font-semibold text-xl text-[#99CCFF]">2010 - 2013 <span class="text-base text-gray-500">| Madagascar <span class="location-flag">🇲🇬</span></span></p>
+                        <h3 class="text-2xl font-semibold text-gray-800">
                             <span class="company-icon">🎓</span>Bachelor's Degree in Finance and Accounting
                         </h3>
-                        <p class="text-md font-medium text-gray-600 mb-2">IST - Madagascar</p>
-                        <p class="text-sm font-medium text-gray-700 mt-2">Key Courses:</p>
-                        <ul class="list-disc list-inside text-gray-700 text-xs ml-4">
+                        <p class="text-lg font-medium text-gray-600 mb-3">IST - Madagascar</p>
+                        <p class="text-base font-medium text-gray-700 mt-3">Key Courses:</p>
+                        <ul class="list-disc list-inside text-gray-700 text-sm ml-6 space-y-1">
                             <li>Introduction to Accounting & Finance</li>
                             <li>Microeconomics & Macroeconomics</li>
                             <li>Business Law & Ethics</li>
@@ -371,33 +535,33 @@
         </div>
     </section>
 
-    <section id="skills" class="py-12 md:py-20">
+    <section id="skills" class="py-16 md:py-24">
         <div class="container mx-auto px-6">
-            <h2 class="text-3xl font-bold text-center mb-4 section-title">Skills Showcase</h2>
-            <p class="text-center text-lg text-on-dark-secondary mb-12 max-w-3xl mx-auto">
+            <h2 class="text-center mb-6 section-title">Skills Showcase</h2>
+            <p class="text-center text-xl text-on-dark-secondary mb-16 max-w-4xl mx-auto">
                 A comprehensive overview of my technical proficiencies, language capabilities, and key soft skills that contribute to my professional effectiveness and collaborative success.
             </p>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <div class="card p-6">
-                    <h3 class="text-xl font-semibold text-gray-800 mb-4">🖥️ IT Skills</h3>
-                    <div class="space-y-3">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+                <div class="card p-8">
+                    <h3 class="text-2xl font-semibold text-gray-800 mb-5">🖥️ IT Skills</h3>
+                    <div class="space-y-4">
                         <div>
-                            <h4 class="font-medium text-[#99CCFF]"><span class="skill-icon">📊</span>Productivity & Analysis:</h4>
-                            <ul class="list-disc list-inside text-sm text-gray-700 ml-4">
+                            <h4 class="font-medium text-[#99CCFF] text-lg"><span class="skill-icon">📊</span>Productivity & Analysis:</h4>
+                            <ul class="list-disc list-inside text-base text-gray-700 ml-5">
                                 <li>Microsoft Office 365</li>
                                 <li>Advanced Excel (VBA, Power Pivot, Power Query)</li>
                             </ul>
                         </div>
                         <div>
-                            <h4 class="font-medium text-[#99CCFF]"><span class="skill-icon">📈</span>Business Intelligence:</h4>
-                             <ul class="list-disc list-inside text-sm text-gray-700 ml-4">
+                            <h4 class="font-medium text-[#99CCFF] text-lg"><span class="skill-icon">📈</span>Business Intelligence:</h4>
+                             <ul class="list-disc list-inside text-base text-gray-700 ml-5">
                                 <li>Microsoft Power BI (Certified Associate - In Progress)</li>
                                 <li>QlikView</li>
                             </ul>
                         </div>
                         <div>
-                            <h4 class="font-medium text-[#99CCFF]"><span class="skill-icon">⚙️</span>ERP Systems:</h4>
-                            <ul class="list-disc list-inside text-sm text-gray-700 ml-4">
+                            <h4 class="font-medium text-[#99CCFF] text-lg"><span class="skill-icon">⚙️</span>ERP Systems:</h4>
+                            <ul class="list-disc list-inside text-base text-gray-700 ml-5">
                                 <li>Microsoft AX Dynamics</li>
                                 <li>ORACLE</li>
                                 <li>SAP FICO, SAP REFX, SAP BO</li>
@@ -405,14 +569,14 @@
                             </ul>
                         </div>
                         <div>
-                            <h4 class="font-medium text-[#99CCFF]"><span class="skill-icon">🤝</span>Consolidation:</h4>
-                            <ul class="list-disc list-inside text-sm text-gray-700 ml-4">
+                            <h4 class="font-medium text-[#99CCFF] text-lg"><span class="skill-icon">🤝</span>Consolidation:</h4>
+                            <ul class="list-disc list-inside text-base text-gray-700 ml-5">
                                 <li>TAGETIK</li>
                             </ul>
                         </div>
                          <div>
-                            <h4 class="font-medium text-[#99CCFF]"><span class="skill-icon">📜</span>Certifications:</h4>
-                            <ul class="list-disc list-inside text-sm text-gray-700 ml-4">
+                            <h4 class="font-medium text-[#99CCFF] text-lg"><span class="skill-icon">📜</span>Certifications:</h4>
+                            <ul class="list-disc list-inside text-base text-gray-700 ml-5">
                                 <li>IELTS - 6.5</li>
                                 <li>Microsoft Certified: Power BI Data Analyst Associate (In Progress)</li>
                             </ul>
@@ -420,17 +584,17 @@
                     </div>
                 </div>
 
-                <div class="card p-6">
-                    <h3 class="text-xl font-semibold text-gray-800 mb-4">🌐 Languages</h3>
-                    <p class="text-sm text-gray-600 mb-3">This chart illustrates my proficiency across different languages, crucial for effective communication in diverse international environments.</p>
+                <div class="card p-8">
+                    <h3 class="text-2xl font-semibold text-gray-800 mb-5">🌐 Languages</h3>
+                    <p class="text-lg text-gray-600 mb-4">This chart illustrates my proficiency across different languages, crucial for effective communication in diverse international environments.</p>
                     <div class="chart-container">
                         <canvas id="languageSkillsChart"></canvas>
                     </div>
                 </div>
 
-                <div class="card p-6">
-                    <h3 class="text-xl font-semibold text-gray-800 mb-4">💡 Soft Skills</h3>
-                    <div class="flex flex-wrap gap-2">
+                <div class="card p-8">
+                    <h3 class="text-2xl font-semibold text-gray-800 mb-5">💡 Soft Skills</h3>
+                    <div class="flex flex-wrap gap-3">
                         <span class="tag">Collaborative Spirit</span>
                         <span class="tag">Organization</span>
                         <span class="tag">Creativity</span>
@@ -438,8 +602,8 @@
                         <span class="tag">Problem Solving</span>
                         <span class="tag">Analytical Thinking</span>
                     </div>
-                     <h3 class="text-xl font-semibold text-gray-800 mt-8 mb-4">🧘 Hobbies</h3>
-                     <ul class="list-disc list-inside text-gray-700">
+                     <h3 class="text-2xl font-semibold text-gray-800 mt-10 mb-5">🧘 Hobbies</h3>
+                     <ul class="list-disc list-inside text-lg text-gray-700">
                         <li>Powerlifting</li>
                         <li>Guitar</li>
                     </ul>
@@ -448,18 +612,21 @@
         </div>
     </section>
 
-    <footer id="contact" class="bg-[#000000] text-gray-300 py-12 mt-12 md:mt-20">
+    <footer id="contact" class="bg-[#000000] text-gray-300 py-16 mt-16 md:mt-24">
         <div class="container mx-auto px-6 text-center">
-            <h2 class="text-2xl font-bold mb-6 text-white">Get In Touch</h2>
-            <p class="mb-2">Jonathan Randrianandrasana</p>
-            <p class="mb-2"><a href="mailto:rasrasjona@gmail.com" class="hover:text-[#99CCFF] hover:underline">rasrasjona@gmail.com</a></p>
-            <p class="mb-2"><a href="tel:0695268750" class="hover:text-[#99CCFF] hover:underline">06 95 26 87 50</a></p>
-            <p class="mb-6"><a href="https://www.linkedin.com/in/jonathan-randrianandrasana-a20907147/" target="_blank" rel="noopener noreferrer" class="hover:text-[#99CCFF] hover:underline">LinkedIn Profile</a></p>
-            <p class="text-sm text-white">&copy; <span id="currentYear"></span> Jonathan Randrianandrasana. All rights reserved.</p>
+            <h2 class="text-3xl font-bold mb-8 text-white">Get In Touch</h2>
+            <p class="mb-3 text-lg">Jonathan Randrianandrasana</p>
+            <p class="mb-3 text-lg"><a href="mailto:rasrasjona@gmail.com" class="hover:text-[#99CCFF] hover:underline">rasrasjona@gmail.com</a></p>
+            <p class="mb-3 text-lg"><a href="tel:0695268750" class="hover:text-[#99CCFF] hover:underline">06 95 26 87 50</a></p>
+            <p class="mb-8 text-lg"><a href="https://www.linkedin.com/in/jonathan-randrianandrasana-a20907147/" target="_blank" rel="noopener noreferrer" class="hover:text-[#99CCFF] hover:underline">LinkedIn Profile</a></p>
+            <p class="text-base text-white">&copy; <span id="currentYear"></span> Jonathan Randrianandrasana. All rights reserved.</p>
         </div>
     </footer>
 
-    <script>
+    <script type="module">
+        // Import Firebase functions (already defined in the head script)
+        // No need to re-import here, they are globally available via window object
+
         document.getElementById('currentYear').textContent = new Date().getFullYear();
 
         // Smooth scroll for navigation links
@@ -591,6 +758,37 @@
                         }
                     }
                 }
+            }
+        });
+
+        // Profile Picture Upload Logic
+        const profilePictureUpload = document.getElementById('profilePictureUpload');
+        const profilePicturePreview = document.getElementById('profilePicturePreview');
+        const statusMessage = document.getElementById('statusMessage');
+
+        profilePictureUpload.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onloadstart = function() {
+                    statusMessage.textContent = "Processing image...";
+                    statusMessage.classList.remove('hidden');
+                };
+                reader.onload = function(e) {
+                    profilePicturePreview.src = e.target.result;
+                    // Call the global save function from the head script
+                    window.saveProfilePicture(e.target.result); 
+                };
+                reader.onerror = function() {
+                    statusMessage.textContent = "Error reading file.";
+                    statusMessage.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            } else {
+                profilePicturePreview.src = "https://placehold.co/160x160/003366/FFFFFF?text=JR";
+                statusMessage.textContent = "No file selected.";
+                statusMessage.classList.remove('hidden');
+                setTimeout(() => statusMessage.classList.add('hidden'), 3000);
             }
         });
     </script>
