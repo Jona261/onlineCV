@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jonathan Randrianandrasana - Interactive CV</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Visualization & Content Choices:
+        - Hero/Summary: HTML/CSS with Tailwind, incorporating a subtle gradient background for a classy finance theme. Goal: Inform. Justification: Clear, professional initial presentation of identity and core value.
+        - Career Timeline (Experience & Studies): Custom HTML/CSS vertical timeline using Tailwind. Goal: Change/Organize. Justification: Unified, left-aligned chronological display of career progression and education on the "same level". Experience items are detailed, while Study items are concise with key courses listed, making them visually "smaller" while still providing information.
+        - IT Skills: Grouped HTML lists with subheadings, enhanced with finance-relevant Unicode icons (dashboard, spreadsheet). Goal: Organize/Inform. Justification: Clear categorization for readability and quick assessment of technical breadth, with visual cues.
+        - Languages: Chart.js Horizontal Bar Chart (Canvas). Goal: Compare. Justification: Effective visual representation of language proficiency levels. (NO SVG)
+        - Soft Skills: HTML styled list/tags using Tailwind. Goal: Inform. Justification: Concise and visually appealing display of key personal attributes.
+        - Hobbies: HTML list with Unicode icons. Goal: Inform. Justification: Adds a personal dimension concisely.
+        CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(to bottom right, #003366, #36454F); /* Navy Blue to Charcoal Gray */
+            color: #F0F0F0; /* Default light text for primary body content */
+            position: relative; /* For pseudo-element overlay */
+            overflow-x: hidden; /* Prevent horizontal scroll from any background effects */
+        }
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0); /* Very subtle dots */
+            background-size: 20px 20px;
+            z-index: -1; /* Place behind content */
+        }
+        .sticky-nav {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background-color: rgba(255, 255, 255, 0.9); /* White with slight transparency */
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .nav-link {
+            color: #36454F; /* Charcoal Gray for nav links on white background */
+            transition: color 0.3s ease;
+        }
+        .nav-link:hover, .nav-link.active {
+            color: #003366; /* Navy Blue for hover/active */
+        }
+        .section-title {
+            color: #99CCFF; /* Accent Blue */
+        }
+        .card {
+            background-color: #FFFFFF; /* Card Background */
+            color: #36454F; /* Charcoal Gray for card text */
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+        }
+        .timeline-item-wrapper {
+            position: relative;
+            padding-left: 30px; /* Space for the line and dot */
+            margin-bottom: 2.5rem; /* Space between items */
+        }
+        .timeline-item-wrapper::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background-color: #A0C4E2; /* Softer Blue for the line */
+        }
+        .timeline-item-wrapper::after {
+            content: '';
+            position: absolute;
+            left: -8px; /* Position the dot over the line */
+            top: 12px; /* Vertical position of the dot */
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background-color: #99CCFF; /* Accent Blue for experience dot */
+            border: 3px solid #003366; /* Border to match body background start color */
+            z-index: 1;
+        }
+        .type-education .timeline-item-wrapper::after {
+            background-color: #A0C4E2; /* Softer blue for education timeline dot */
+            border: 3px solid #003366; /* Border to match body background start color */
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px; /* Max width for readability */
+            margin-left: auto;
+            margin-right: auto;
+            height: 250px; /* Base height */
+            max-height: 300px; /* Max height */
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 300px; /* Taller on larger screens */
+            }
+        }
+        .tag {
+            background-color: #A0C4E2; /* Softer Blue Accent */
+            color: #FFFFFF;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px; /* pill shape */
+            font-size: 0.875rem;
+        }
+        .type-education .card {
+            background-color: #F0F0F0; /* Lighter background for education */
+            border-left: 4px solid #A0C4E2; /* Softer Blue border */
+        }
+        /* Gradient for Header */
+        .header-gradient {
+            background: linear-gradient(to right, #003366, #36454F); /* Navy Blue to Charcoal Gray */
+        }
+        /* Icon styling for consistency */
+        .skill-icon {
+            display: inline-block;
+            width: 1.2em;
+            text-align: center;
+            margin-right: 0.25em;
+            color: #99CCFF; /* Accent color for icons */
+        }
+        /* Adjusted text colors for elements directly on the dark body background */
+        .text-on-dark {
+            color: #F0F0F0; /* Very light gray for general content on dark background */
+        }
+        .text-on-dark-secondary {
+            color: #C0C0C0; /* Slightly darker light gray for secondary text */
+        }
+        .text-on-dark-tertiary {
+            color: #A0A0A0; /* Even darker light gray for tertiary text */
+        }
+        /* Ensure specific text elements within cards remain dark for contrast on white background */
+        .card .text-gray-700, .card .text-gray-800, .card .text-gray-600 {
+            color: #36454F; /* Charcoal Gray for text inside cards */
+        }
+        .card .text-sm.text-gray-500 {
+            color: #666666; /* Slightly lighter gray for dates/locations in cards */
+        }
+        .footer-text-color {
+            color: #E0E0E0; /* Light text for footer content */
+        }
+        .footer-link-color {
+            color: #99CCFF; /* Accent blue for footer links */
+        }
+        .company-description {
+            font-size: 0.875rem; /* text-sm */
+            color: #555555; /* A slightly darker gray for company descriptions within cards */
+            margin-top: 0.5rem;
+            margin-bottom: 0.75rem;
+            border-left: 2px solid #A0C4E2; /* Subtle border for distinction */
+            padding-left: 0.5rem;
+        }
+        .company-icon {
+            display: inline-block;
+            margin-right: 0.5rem;
+            font-size: 1.1em;
+            color: #003366; /* Navy blue for company icons, matching the header gradient start */
+        }
+        .location-flag {
+            display: inline-block;
+            margin-left: 0.25rem; /* Small space between location text and flag */
+            font-size: 1.1em; /* Adjust size as needed */
+            vertical-align: middle; /* Align with text */
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <nav id="main-nav" class="sticky-nav">
+        <div class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <a href="#" class="text-xl font-bold text-gray-800">Jonathan Randrianandrasana</a>
+            <div class="space-x-4">
+                <a href="#summary" class="nav-link">Summary</a>
+                <a href="#experience" class="nav-link">Experience</a>
+                <a href="#skills" class="nav-link">Skills</a>
+                <a href="#contact" class="nav-link">Contact</a>
+            </div>
+        </div>
+    </nav>
+
+    <header id="hero" class="py-16 md:py-24 text-white header-gradient">
+        <div class="container mx-auto px-6 text-center">
+            <h1 class="text-3xl md:text-4xl font-bold">Jonathan Randrianandrasana</h1>
+            <p class="mt-4 text-lg md:text-xl text-gray-200">Corporate Management Controller</p>
+            <p class="mt-6 text-gray-300 max-w-2xl mx-auto">
+                Connect with me:
+                <a href="mailto:rasrasjona@gmail.com" class="text-white hover:underline">rasrasjona@gmail.com</a> |
+                <a href="tel:0695268750" class="text-white hover:underline">06 95 26 87 50</a> |
+                <a href="https://www.linkedin.com/in/jonathan-randrianandrasana-a20907147/" target="_blank" rel="noopener noreferrer" class="text-white hover:underline">LinkedIn</a>
+            </p>
+        </div>
+    </header>
+
+    <section id="summary" class="py-12 md:py-20">
+        <div class="container mx-auto px-6">
+            <h2 class="text-3xl font-bold text-center mb-4 section-title">Professional Summary</h2>
+            <p class="text-center text-lg text-on-dark-secondary mb-10 max-w-3xl mx-auto">
+                This section provides a concise overview of my professional background, highlighting key expertise and career focus. My experience lies in assisting and advising managers and operational staff in their decision-making and activity steering through relevant analyses and syntheses.
+            </p>
+            <div class="card p-6 md:p-8 max-w-3xl mx-auto">
+                <p class="text-lg text-gray-700 leading-relaxed">
+                    Experienced in management control, I assist and advise managers and operational staff in their decision-making and activity steering through relevant analyses and syntheses. My background includes robust experience in financial reporting, budget management, IFRS standards, and process improvement, utilizing tools like SAP, Power BI, and advanced Excel.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <section id="experience" class="py-12 md:py-20">
+        <div class="container mx-auto px-6">
+            <h2 class="text-3xl font-bold text-center mb-4 section-title">Career Timeline</h2>
+            <p class="text-center text-lg text-on-dark-secondary mb-12 max-w-3xl mx-auto">
+                Explore my professional journey and educational background. This timeline showcases key roles, responsibilities, and academic achievements that have shaped my expertise in finance and management control.
+            </p>
+            <div class="relative max-w-3xl mx-auto">
+                
+                <div class="timeline-item-wrapper type-experience">
+                    <div class="card p-6">
+                        <p class="font-semibold text-lg text-[#99CCFF]">Nov 2023 - Present <span class="text-sm text-gray-500">| Montauban <span class="location-flag">🇫🇷</span></span></p>
+                        <h3 class="text-xl font-semibold text-gray-800">Corporate Management Controller</h3>
+                        <p class="text-md font-medium text-gray-600 mb-2"><span class="company-icon">🛒</span>Proàpro METRO AG</p>
+                        <p class="company-description">
+                            Proàpro is part of METRO AG, a leading international wholesaler operating in 24 countries. They focus on providing food and non-food products to hotels, restaurants, caterers (HoReCa), and independent traders. Proàpro's sales are around €1.3 billion annually.
+                        </p>
+                        <ul class="list-disc list-inside text-gray-700 text-sm space-y-1">
+                            <li>Preparation, production, verification, and analysis of consolidated accounts (7 companies) under IFRS standards (IFRS16, IFRS9).</li>
+                            <li>Management of reporting packages for monthly performance reviews with METRO group.</li>
+                            <li>Overseeing accounting, back-office, and TAGETIK consolidation tool.</li>
+                            <li>Collaboration on budgets/forecasts for the group.</li>
+                            <li>CAPEX budget preparation and investment process monitoring.</li>
+                            <li>KPI analysis and process improvement proposals.</li>
+                            <li>Documentation of processes and procedures.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="timeline-item-wrapper type-education">
+                    <div class="card p-6">
+                        <p class="font-semibold text-lg text-[#99CCFF]">2022 - 2023 <span class="text-sm text-gray-500">| Toulouse <span class="location-flag">🇫🇷</span></span></p>
+                        <h3 class="text-xl font-semibold text-gray-800">
+                            <span class="company-icon">🎓</span>Specialized Master's Degree® Expert in Internal Audit and Management Control
+                        </h3>
+                        <p class="text-md font-medium text-gray-600 mb-2">TOULOUSE BUSINESS SCHOOL</p>
+                        <p class="text-sm font-medium text-gray-700 mt-2">Key Courses:</p>
+                        <ul class="list-disc list-inside text-gray-700 text-xs ml-4">
+                            <li>Internal Audit Standards & Methods</li>
+                            <li>Risk Management & Control</li>
+                            <li>Consolidated Accounts & IFRS</li>
+                            <li>Information Systems & Decision Support (Excel, VBA, SAP, Power BI)</li>
+                            <li>Strategic Performance Management</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="timeline-item-wrapper type-experience">
+                    <div class="card p-6">
+                        <p class="font-semibold text-lg text-[#99CCFF]">Sep 2022 - Sep 2023 <span class="text-sm text-gray-500">| Toulouse <span class="location-flag">🇫🇷</span></span></p>
+                        <h3 class="text-xl font-semibold text-gray-800">Management Controller (Apprenticeship)</h3>
+                        <p class="text-md font-medium text-gray-600 mb-2"><span class="company-icon">💻</span>CAPGEMINI</p>
+                        <p class="company-description">
+                            Capgemini is a global leader in consulting, technology services, and digital transformation. They help clients accelerate their dual transition to a digital and sustainable world. In 2024, Capgemini reported global revenues of €22.1 billion.
+                        </p>
+                        <ul class="list-disc list-inside text-gray-700 text-sm space-y-1">
+                            <li>Produced periodic reports (analytical allocations, indirect costs, O2C, project margin).</li>
+                            <li>Prepared presentations for BU reviews.</li>
+                            <li>Conducted ad-hoc analyses for operational managers.</li>
+                            <li>Monitored IFRS 15 application.</li>
+                            <li>Improved management tools (Excel, VBA, Power Query, Power BI).</li>
+                            <li>Participated in monthly closings and initiated rolling forecasts.</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="timeline-item-wrapper type-education">
+                    <div class="card p-6">
+                         <p class="font-semibold text-lg text-[#99CCFF]">2021 - 2022 <span class="text-sm text-gray-500">| Toulouse <span class="location-flag">🇫🇷</span></span></p>
+                        <h3 class="text-xl font-semibold text-gray-800">
+                            <span class="company-icon">🎓</span>Master's Degree in Audit and Management Control
+                        </h3>
+                        <p class="text-md font-medium text-gray-600 mb-2">ESG TOULOUSE</p>
+                        <p class="text-sm font-medium text-gray-700 mt-2">Key Courses:</p>
+                        <ul class="list-disc list-inside text-gray-700 text-xs ml-4">
+                            <li>Management Control System Design & Piloting</li>
+                            <li>Financial & Organizational Audit</li>
+                            <li>Corporate & Group Taxation</li>
+                            <li>Financial Management & Cost Analysis</li>
+                            <li>VBA - Power BI for Reporting</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="timeline-item-wrapper type-experience">
+                    <div class="card p-6">
+                        <p class="font-semibold text-lg text-[#99CCFF]">Feb 2021 - Oct 2021 <span class="text-sm text-gray-500">| Madagascar <span class="location-flag">🇲🇬</span></span></p>
+                        <h3 class="text-xl font-semibold text-gray-800">Financial Manager</h3>
+                        <p class="text-md font-medium text-gray-600 mb-2"><span class="company-icon">❤️‍🩹</span>Action Contre la Faim</p>
+                        <p class="company-description">
+                            Action Contre la Faim (Action Against Hunger) is a leading humanitarian organization committed to ending hunger worldwide. They provide life-saving programs in nutrition, food security, water, sanitation, and hygiene. In 2023, their financial report showed significant resources allocated to programs (88.4%).
+                        </p>
+                         <ul class="list-disc list-inside text-gray-700 text-sm space-y-1">
+                            <li>Managed financing contracts with sub-recipients.</li>
+                            <li>Supervised mission treasury and institutional donor funding.</li>
+                            <li>Led accounting and treasury team.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="timeline-item-wrapper type-experience">
+                    <div class="card p-6">
+                        <p class="font-semibold text-lg text-[#99CCFF]">Jul 2017 - Jan 2021 <span class="text-sm text-gray-500">| Madagascar <span class="location-flag">🇲🇬</span></span></p>
+                        <h3 class="text-xl font-semibold text-gray-800">Management Controller</h3>
+                        <p class="text-md font-medium text-gray-600 mb-2"><span class="company-icon">🚬</span>Imperial Tobacco</p>
+                        <p class="company-description">
+                            Imperial Tobacco is a subsidiary of Imperial Brands PLC, a multinational tobacco company. Imperial Brands operates globally, focusing on tobacco and next-generation products (NGP). For FY2024, Imperial Brands reported £8.2 billion in Tobacco & NGP net revenue.
+                        </p>
+                        <ul class="list-disc list-inside text-gray-700 text-sm space-y-1">
+                            <li>Conducted scenario analysis for strategic decisions.</li>
+                            <li>Managed budget preparation, control, and standard cost calculation.</li>
+                            <li>Performed monthly reporting and Rolling forecast (P&L, BS, CF, WCR, CAPEX).</li>
+                            <li>Developed management dashboards and procedure manuals.</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="timeline-item-wrapper type-education">
+                    <div class="card p-6">
+                        <p class="font-semibold text-lg text-[#99CCFF]">2014 - 2016 <span class="text-sm text-gray-500">| Madagascar <span class="location-flag">🇲🇬</span></span></p>
+                        <h3 class="text-xl font-semibold text-gray-800">
+                            <span class="company-icon">🎓</span>Master's Degree in Finance and Accounting
+                        </h3>
+                        <p class="text-md font-medium text-gray-600 mb-2">CNTEMAD - Madagascar</p>
+                        <p class="text-sm font-medium text-gray-700 mt-2">Key Courses:</p>
+                        <ul class="list-disc list-inside text-gray-700 text-xs ml-4">
+                            <li>Financial Accounting & Reporting</li>
+                            <li>Management Accounting & Control</li>
+                            <li>Corporate Finance & Valuation</li>
+                            <li>Financial Markets & Instruments</li>
+                            <li>Taxation & Audit Principles</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="timeline-item-wrapper type-education">
+                    <div class="card p-6">
+                        <p class="font-semibold text-lg text-[#99CCFF]">2010 - 2013 <span class="text-sm text-gray-500">| Madagascar <span class="location-flag">🇲🇬</span></span></p>
+                        <h3 class="text-xl font-semibold text-gray-800">
+                            <span class="company-icon">🎓</span>Bachelor's Degree in Finance and Accounting
+                        </h3>
+                        <p class="text-md font-medium text-gray-600 mb-2">IST - Madagascar</p>
+                        <p class="text-sm font-medium text-gray-700 mt-2">Key Courses:</p>
+                        <ul class="list-disc list-inside text-gray-700 text-xs ml-4">
+                            <li>Introduction to Accounting & Finance</li>
+                            <li>Microeconomics & Macroeconomics</li>
+                            <li>Business Law & Ethics</li>
+                            <li>Financial Mathematics</li>
+                            <li>Cost Accounting & Budgeting</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="skills" class="py-12 md:py-20">
+        <div class="container mx-auto px-6">
+            <h2 class="text-3xl font-bold text-center mb-4 section-title">Skills Showcase</h2>
+            <p class="text-center text-lg text-on-dark-secondary mb-12 max-w-3xl mx-auto">
+                A comprehensive overview of my technical proficiencies, language capabilities, and key soft skills that contribute to my professional effectiveness and collaborative success.
+            </p>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="card p-6">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">🖥️ IT Skills</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <h4 class="font-medium text-[#99CCFF]"><span class="skill-icon">📊</span>Productivity & Analysis:</h4>
+                            <ul class="list-disc list-inside text-sm text-gray-700 ml-4">
+                                <li>Microsoft Office 365</li>
+                                <li>Advanced Excel (VBA, Power Pivot, Power Query)</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="font-medium text-[#99CCFF]"><span class="skill-icon">📈</span>Business Intelligence:</h4>
+                             <ul class="list-disc list-inside text-sm text-gray-700 ml-4">
+                                <li>Microsoft Power BI (Certified Associate - In Progress)</li>
+                                <li>QlikView</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="font-medium text-[#99CCFF]"><span class="skill-icon">⚙️</span>ERP Systems:</h4>
+                            <ul class="list-disc list-inside text-sm text-gray-700 ml-4">
+                                <li>Microsoft AX Dynamics</li>
+                                <li>ORACLE</li>
+                                <li>SAP FICO, SAP REFX, SAP BO</li>
+                                <li>AS400</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="font-medium text-[#99CCFF]"><span class="skill-icon">🤝</span>Consolidation:</h4>
+                            <ul class="list-disc list-inside text-sm text-gray-700 ml-4">
+                                <li>TAGETIK</li>
+                            </ul>
+                        </div>
+                         <div>
+                            <h4 class="font-medium text-[#99CCFF]"><span class="skill-icon">📜</span>Certifications:</h4>
+                            <ul class="list-disc list-inside text-sm text-gray-700 ml-4">
+                                <li>IELTS - 6.5</li>
+                                <li>Microsoft Certified: Power BI Data Analyst Associate (In Progress)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card p-6">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">🌐 Languages</h3>
+                    <p class="text-sm text-gray-600 mb-3">This chart illustrates my proficiency across different languages, crucial for effective communication in diverse international environments.</p>
+                    <div class="chart-container">
+                        <canvas id="languageSkillsChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card p-6">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">💡 Soft Skills</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="tag">Collaborative Spirit</span>
+                        <span class="tag">Organization</span>
+                        <span class="tag">Creativity</span>
+                        <span class="tag">Adaptability</span>
+                        <span class="tag">Problem Solving</span>
+                        <span class="tag">Analytical Thinking</span>
+                    </div>
+                     <h3 class="text-xl font-semibold text-gray-800 mt-8 mb-4">🧘 Hobbies</h3>
+                     <ul class="list-disc list-inside text-gray-700">
+                        <li>Powerlifting</li>
+                        <li>Guitar</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer id="contact" class="bg-[#000000] text-gray-300 py-12 mt-12 md:mt-20">
+        <div class="container mx-auto px-6 text-center">
+            <h2 class="text-2xl font-bold mb-6 text-white">Get In Touch</h2>
+            <p class="mb-2">Jonathan Randrianandrasana</p>
+            <p class="mb-2"><a href="mailto:rasrasjona@gmail.com" class="hover:text-[#99CCFF] hover:underline">rasrasjona@gmail.com</a></p>
+            <p class="mb-2"><a href="tel:0695268750" class="hover:text-[#99CCFF] hover:underline">06 95 26 87 50</a></p>
+            <p class="mb-6"><a href="https://www.linkedin.com/in/jonathan-randrianandrasana-a20907147/" target="_blank" rel="noopener noreferrer" class="hover:text-[#99CCFF] hover:underline">LinkedIn Profile</a></p>
+            <p class="text-sm text-white">&copy; <span id="currentYear"></span> Jonathan Randrianandrasana. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+        // Smooth scroll for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    targetElement.scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+        
+        // Active nav link highlighting on scroll
+        const sections = document.querySelectorAll("section[id], header[id]");
+        const navLinks = document.querySelectorAll("#main-nav a.nav-link");
+
+        window.onscroll = () => {
+            let current = "";
+            sections.forEach((section) => {
+                const sectionTop = section.offsetTop;
+                if (pageYOffset >= sectionTop - 100) { // Adjusted offset for better accuracy
+                    current = section.getAttribute("id");
+                }
+            });
+
+            navLinks.forEach((link) => {
+                link.classList.remove("active");
+                if (link.getAttribute("href").includes(current)) {
+                    link.classList.add("active");
+                }
+            });
+        };
+
+
+        // Chart.js for Language Skills
+        const languageCtx = document.getElementById('languageSkillsChart').getContext('2d');
+        // Label processing function (16 char limit)
+        function processLabel(label) {
+            const MAX_LENGTH = 16;
+            if (typeof label !== 'string' || label.length <= MAX_LENGTH) {
+                return label;
+            }
+            const words = label.split(' ');
+            const lines = [];
+            let currentLine = "";
+            for (let i = 0; i < words.length; i++) {
+                const word = words[i];
+                if (currentLine.length === 0) {
+                    currentLine = word;
+                } else if ((currentLine + " " + word).length <= MAX_LENGTH + 2) { // Allow slight overflow for last word
+                    currentLine += " " + word;
+                } else {
+                    lines.push(currentLine);
+                    currentLine = word;
+                }
+            }
+            if (currentLine.length > 0) {
+                lines.push(currentLine);
+            }
+            return lines.length > 0 ? lines : label; // Return array or original short label
+        }
+
+        const languageChart = new Chart(languageCtx, {
+            type: 'bar', // Horizontal bar chart
+            data: {
+                labels: [processLabel('Malagasy'), processLabel('French'), processLabel('English')],
+                datasets: [{
+                    label: 'Proficiency',
+                    data: [100, 100, 95],
+                    backgroundColor: [
+                        '#99CCFF', /* Accent Blue */
+                        '#A0C4E2', /* Softer Blue */
+                        '#66CCFF'  /* Lighter Blue */
+                    ],
+                    borderColor: [
+                        '#6699CC',
+                        '#7DA7CC',
+                        '#3399FF'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y', // This makes it a horizontal bar chart
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            color: '#3C3C3C', /* Dark color for ticks on light background */
+                            callback: function(value) { return value + "%" }
+                        },
+                        grid: {
+                            color: '#E0E0E0' /* Light grid lines */
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            color: '#3C3C3C', /* Dark color for ticks on light background */
+                        },
+                        grid: {
+                            display: false /* Hide y-axis grid lines for cleaner look */
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false /* Hide legend as it's clear from context */
+                    },
+                    tooltip: {
+                        backgroundColor: '#3C3C3C', /* Dark Gray for tooltip */
+                        titleColor: '#FFFFFF',
+                        bodyColor: '#FFFFFF',
+                        callbacks: {
+                            title: function(tooltipItems) {
+                                const item = tooltipItems[0];
+                                let label = item.chart.data.labels[item.dataIndex];
+                                if (Array.isArray(label)) {
+                                  return label.join(' '); /* Join multi-line labels for tooltip title */
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
